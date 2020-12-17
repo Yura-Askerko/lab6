@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Employees</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.0/css/bootstrap.min.css" rel="stylesheet" />
+</head>
+<body>
+    <h2 class="text-center">Table "Orders"</h2>
+
+    <form name="orderForm">
+        <input type="hidden" id="inId" name="inId" value=0 />
+        <div class="form-group">
+            <label>CheckInDate: </label>
+            <input type="date" id="inCheckInDate" name="inCheckInDate" />
+
+            <label>CheckOut: </label>
+            <input type="date" id="inCheckOut" name="inCheckOut" />
+
+            <label>Employee: </label>
+            <select id="inEmployee" name="inEmployee">
+            </select>
+
+            <label>Client: </label>
+            <select id="inClient" name="inClient">
+            </select>
+
+            <label>Room: </label>
+            <select id="inRoom" name="inRoom">
+            </select>
+
+            <button type="submit" id="submit" class="btn btn-primary">Save</button>
+            <a id="reset" onclick="reset()" class="btn btn-primary text-white">Reset</a>
+        </div>
+    </form>
+
+    <table class="table table-striped text-break">
+        <thead class="thead-dark">
+            <tr>
+                <th>Id</th>
+                <th>CheckInDate</th>
+                <th>CheckOut</th>
+                <th>Employee</th>
+                <th>Client</th>
+                <th>Room</th>
+                <th>Modification</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+    <script>
+        async function GetOrders() {
+            const response = await fetch("/api/orders", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+
+            if (response.ok == true) {
+                const orders = await response.json();
+                let rows = document.querySelector("tbody");
+                orders.forEach(o => {
+                    rows.append(row(o));
+                });
+            }
+        }
+
+        async function GetOrder(id) {
+            const response = await fetch("/api/orders/" + id, {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const order = await response.json();
+                const form = document.forms["orderForm"];
+
+                form.elements["inId"].value = order.id;
+                form.elements["inCheckInDate"].value = order.checkInDate.substring(0, 10);
+                form.elements["inCheckOut"].value = order.checkOut.substring(0, 10);
+                form.elements["inEmployee"].value = order.employeeId;
+                form.elements["inClient"].value = order.clientId;
+                form.elements["inRoom"].value = order.roomId;
+            }
+        }
+
+        async function CreateOrder(orderId, orderCheckInDate, orderCheckOut, employeeId, clientId, roomId) {
+            const response = await fetch("api/orders", {
+                method: "POST",
+                headers: { "Accept": "application/json", "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: parseInt(orderId, 10),
+                    checkInDate: orderCheckInDate,
+                    checkOut: orderCheckOut,
+                    employeeId: parseInt(employeeId, 10),
+                    clientId: parseInt(clientId, 10),
+                    roomId: parseInt(roomId, 10)
+                })
+            });
+            if (response.ok === true) {
+                const order = await response.json();
+                reset();
+                document.querySelector("tbody").append(row(order));
+            }
+        }
+
+        async function EditOrder(orderId, orderCheckInDate, orderCheckOut, employeeId, clientId, roomId) {
+            const response = await fetch("/api/orders", {
+                method: "PUT",
+                headers: {"Content-Type": "application/json" },
+                body: JSON.stringify({
+                    id: parseInt(orderId, 10),
+                    checkInDate: orderCheckInDate,
+                    checkOut: orderCheckOut,
+                    employeeId: parseInt(employeeId, 10),
+                    clientId: parseInt(clientId, 10),
+                    roomId: parseInt(roomId, 10)
+                })
+            });
+            if (response.ok === true) {
+                const order = await response.json();
+                reset();
+                document.querySelector("tr[data-rowid='" + order.id + "']").replaceWith(row(order));
+            }
+        }
+
+        async function DeleteOrder(id) {
+            const response = await fetch("/api/orders/" + id, {
+                method: "DELETE",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok === true) {
+                const order = await response.json();
+                document.querySelector("tr[data-rowid='" + order.id + "']").remove();
+            }
+        }
+
+        function row(order) {
+            const tr = document.createElement("tr");
+            tr.setAttribute("data-rowid", order.id);
+
+            const idTd = document.createElement("td");
+            idTd.append(order.id);
+            tr.append(idTd);
+
+            const orderCheckInDateTd = document.createElement("td");
+            orderCheckInDateTd.append(order.checkInDate.substring(0, 10));
+            tr.append(orderCheckInDateTd);
+
+            const orderCheckOutTd = document.createElement("td");
+            orderCheckOutTd.append(order.checkOut.substring(0, 10));
+            tr.append(orderCheckOutTd);
+
+            const employeeTd = document.createElement("td");
+            employeeTd.append(order.employee.fullName);
+            tr.append(employeeTd);
+
+            const clinetTd = document.createElement("td");
+            clinetTd.append(order.client.fullName);
+            tr.append(clinetTd);
+
+            const roomTd = document.createElement("td");
+            roomTd.append(order.room.type);
+            tr.append(roomTd);
+
+            const linksTd = document.createElement("td");
+
+            const editLink = document.createElement("a");
+            editLink.setAttribute("data-id", order.id);
+            editLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            editLink.append("Change");
+            editLink.addEventListener("click", e => {
+                e.preventDefault();
+                GetOrder(order.id);
+            });
+            linksTd.append(editLink);
+
+            const removeLink = document.createElement("a");
+            removeLink.setAttribute("data-id", order.id);
+            removeLink.setAttribute("style", "cursor:pointer;padding:15px;");
+            removeLink.append("Delete");
+            removeLink.addEventListener("click", e => {
+                e.preventDefault();
+                DeleteOrder(order.id);
+            });
+
+            linksTd.append(removeLink);
+            tr.appendChild(linksTd);
+
+            return tr;
+        }
+
+        function reset() {
+            const form = document.forms["orderForm"];
+            form.reset();
+            form.elements["inId"].value = 0;
+        }
+
+        document.getElementById("reset").click(function (e) {
+            e.preventDefault();
+            reset();
+        })
+
+        document.forms["orderForm"].addEventListener("submit", e => {
+            e.preventDefault();
+            const form = document.forms["orderForm"];
+            const orderId = form.elements["inId"].value;
+            const orderCheckInDate = form.elements["inCheckInDate"].value;
+            const orderCheckOut = form.elements["inCheckOut"].value;
+            const employeeId = form.elements["inEmployee"].value;
+            const clientId = form.elements["inClient"].value;
+            const roomId = form.elements["inRoom"].value;
+
+            if (orderId == 0)
+                CreateOrder(orderId, orderCheckInDate, orderCheckOut, employeeId, clientId, roomId);
+            else
+                EditOrder(orderId, orderCheckInDate, orderCheckOut, employeeId, clientId, roomId);
+        });
+
+        async function GetEmployees() {
+            const response = await fetch("/api/orders/employees", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok == true) {
+                const employees = await response.json();
+                let select = document.getElementById("inEmployee");
+                var i = 0;
+                employees.forEach(g => {
+                    select.options[i] = new Option(g.fullName, g.id);
+                    i += 1;
+                })
+            }
+        }
+
+        async function GetClients() {
+            const response = await fetch("/api/orders/clients", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok == true) {
+                const clients = await response.json();
+                let select = document.getElementById("inClient");
+                var i = 0;
+                clients.forEach(g => {
+                    select.options[i] = new Option(g.fullName, g.id);
+                    i += 1;
+                })
+            }
+        }
+
+        async function GetRooms() {
+            const response = await fetch("/api/orders/rooms", {
+                method: "GET",
+                headers: { "Accept": "application/json" }
+            });
+            if (response.ok == true) {
+                const rooms = await response.json();
+                let select = document.getElementById("inRoom");
+                var i = 0;
+                rooms.forEach(g => {
+                    select.options[i] = new Option(g.type, g.id);
+                    i += 1;
+                })
+            }
+        }
+
+        GetOrders();
+
+        GetEmployees();
+        GetClients();
+        GetRooms();
+    </script>
+</body>
+</html>
